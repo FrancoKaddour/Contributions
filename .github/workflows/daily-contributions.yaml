@@ -5,9 +5,9 @@ on:
     - cron: '0 6,10,14,18,22 * * *'  # 5 ejecuciones diarias en diferentes horarios
   workflow_dispatch:
 
+# SOLUCIÓN: Eliminamos el permiso duplicado
 permissions:
-  contents: read   # Permiso de lectura crítico añadido
-  contents: write
+  contents: write   # ¡ESTO INCLUYE READ AUTOMÁTICAMENTE!
   pull-requests: write
   issues: write
 
@@ -25,37 +25,37 @@ jobs:
           sudo apt install -y gh
           gh auth login --with-token <<< "${{ secrets.AUTO_CONTRIB_TOKEN }}"
         env:
-          GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}  # Variable crítica añadida
+          GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
 
   contribute:
     runs-on: ubuntu-latest
     needs: setup
     env:
-      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}  # Variable para todos los pasos
+      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
+    strategy:
+      matrix:
+        repo: 
+          - "facebook/react"
+          - "tailwindlabs/tailwindcss"
+          - "vercel/next.js"
+          - "vuejs/core"
+          - "sveltejs/svelte"
+          - "chakra-ui/chakra-ui"
+          - "storybookjs/storybook"
+          - "axios/axios"
+          - "lodash/lodash"
+          - "chartjs/Chart.js"
+          - "adobe/react-spectrum"
+          - "mui/material-ui"
+          - "reduxjs/redux-toolkit"
+          - "react-hook-form/react-hook-form"
+          - "framer/motion"
+          - "threejs/three.js"
     steps:
       - name: Get random repo
         id: random-repo
         run: |
-          # Lista de repositorios
-          REPOS=(
-            "facebook/react"
-            "tailwindlabs/tailwindcss"
-            "vercel/next.js"
-            "vuejs/core"
-            "sveltejs/svelte"
-            "chakra-ui/chakra-ui"
-            "storybookjs/storybook"
-            "axios/axios"
-            "lodash/lodash"
-            "chartjs/Chart.js"
-            "adobe/react-spectrum"
-            "mui/material-ui"
-            "reduxjs/redux-toolkit"
-            "react-hook-form/react-hook-form"
-            "framer/motion"
-            "threejs/three.js"
-          )
-          # Seleccionar un repo aleatorio
+          REPOS=(${{ join(matrix.repo, ' ') }})
           SELECTED_REPO=${REPOS[$RANDOM % ${#REPOS[@]}]}
           echo "selected_repo=$SELECTED_REPO" >> $GITHUB_OUTPUT
 
@@ -66,24 +66,22 @@ jobs:
           path: target-repo
           token: ${{ secrets.AUTO_CONTRIB_TOKEN }}
           persist-credentials: true
-          ref: main            # Especificar rama
-          fetch-depth: 0        # Descargar todo el historial
-          sparse-checkout: |     # Descargar solo lo necesario
+          ref: main
+          fetch-depth: 0
+          sparse-checkout: |
             README.md
             examples/
 
       - name: Make human-like contribution
         run: |
           cd target-repo
-          sleep $((60 + RANDOM % 240))  # Espera aleatoria
+          sleep $((60 + RANDOM % 240))
           
-          # 1. Corregir errores en documentación
           if [ -f README.md ]; then
             sed -i 's/hte/the/g' README.md
             sed -i 's/Javscript/JavaScript/g' README.md
           fi
           
-          # 2. Añadir ejemplo práctico
           if [ ! -f examples/franco-usage.js ]; then
             mkdir -p examples
             echo "// Ejemplo por @FrancoKaddour" > examples/franco-usage.js
@@ -102,7 +100,7 @@ jobs:
           git commit -m "📚 Mejoras de documentación y ejemplos"
           git push origin $BRANCH_NAME
           
-          sleep $((120 + RANDOM % 360))  # Espera aleatoria
+          sleep $((120 + RANDOM % 360))
           
           gh pr create \
             --title "Mejoras de documentación (por @FrancoKaddour)" \
@@ -114,16 +112,14 @@ jobs:
       - name: Engage with community
         run: |
           sleep $((300 + RANDOM % 600))
-          # Obtener un issue aleatorio (el primero de la lista)
           ISSUE_NUMBER=$(gh issue list --repo ${{ steps.random-repo.outputs.selected_repo }} --limit 1 --json number -q '.[0].number')
           if [ -n "$ISSUE_NUMBER" ]; then
             gh issue comment $ISSUE_NUMBER --repo ${{ steps.random-repo.outputs.selected_repo }} \
               --body "Interesante problema! Desde mi experiencia con frontend, sugeriría probar este enfoque..."
           fi
 
-      - name: Verify access (Diagnóstico)
+      - name: Verify access
         run: |
-          echo "Token usado: ${{ secrets.AUTO_CONTRIB_TOKEN }}"
           gh auth status
           gh api /repos/${{ steps.random-repo.outputs.selected_repo }} --jq .permissions
 
@@ -131,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: contribute
     env:
-      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}  # Variable para todos los pasos
+      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
     steps:
       - name: Update profile README
         uses: actions/checkout@v4
@@ -148,7 +144,6 @@ jobs:
           gh pr list --author FrancoKaddour --limit 5 --json repository,url,title | \
           jq -r '.[] | "- [\(.repository.name)]\(.url) - \(.title)"' >> new-section.md
           
-          # Insertar en README entre los marcadores
           awk '/<!-- CONTRIB_START -->/{print; print ""; while(getline <"new-section.md") print; f=1} /<!-- CONTRIB_END -->/{f=0} !f' README.md > tmp.md
           mv tmp.md README.md
           rm new-section.md
