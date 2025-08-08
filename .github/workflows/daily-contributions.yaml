@@ -76,7 +76,7 @@ EOF
           while read -r repo; do
             echo "Trying $repo"
 
-            # Obtener branch por defecto
+            # Obtener el default branch
             branch=$(gh repo view "$repo" --json defaultBranchRef -q ".defaultBranchRef.name" 2>/dev/null)
             if [ -z "$branch" ]; then
               echo "No default branch for $repo. Skipping."
@@ -160,7 +160,8 @@ EOF
       - name: Update README with latest PRs
         run: |
           cd profile
-          awk '/<!-- recent_prs_start -->/{print; system("cat RECENT_PRS.md"); f=1} /<!-- recent_prs_end -->/{f=0} !f' README.md > README.new
+          awk '/<!-- recent_prs_start -->/{print; system("cat RECENT_PRS.md"); f=1} /<!-- recent_prs_end -->/{f=0} !f' README.md \
+            > README.new
           mv README.new README.md
 
       - name: Commit and push profile update
