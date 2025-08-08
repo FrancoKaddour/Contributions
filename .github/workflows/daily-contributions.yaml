@@ -76,7 +76,7 @@ EOF
           while read -r repo; do
             echo "Trying $repo"
 
-            # Obtener el default branch
+            # Obtener default branch
             branch=$(gh repo view "$repo" --json defaultBranchRef -q ".defaultBranchRef.name" 2>/dev/null)
             if [ -z "$branch" ]; then
               echo "No default branch for $repo. Skipping."
@@ -105,23 +105,23 @@ EOF
 
             # Hacer commit correctamente
             git add -- "$file"
-            git commit -m "Small improvement: docs/example/test (learning and OSS ❤️)"
+            git commit -m "Small improvement: docs/example/test (learning and OSS 🤗)"
 
-            # Push y PR
+            # Push y creación de PR
             git push --set-upstream origin "$branch_name"
             pr_url=$(gh pr create \
-              --title "Small docs/example/test improvement (learning and OSS ❤️)" \
+              --title "Small docs/example/test improvement (learning and OSS 🤗)" \
               --body "Hi! I made a small contribution to your project—just a tiny improvement to the docs/examples/tests. I love learning from open source and wanted to give back, even in a small way.\n—Franco" \
               --head "$branch_name" --base "$branch" 2>/dev/null || echo "")
             echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
 
             # Crear issue friendly (opcional)
             gh issue create \
-              --title "Friendly contribution: small docs/example/test improvement" \
+              --title "Friendly contribution: small docs/example/test improvement 🤗" \
               --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nI really appreciate the effort you put into this project and wanted to participate, even if it’s just a little.\nThank you for your awesome work!\n—Franco\n\nPR: $pr_url" \
               || true
 
-            # Limpieza y salida del loop
+            # Limpieza y fin del loop
             cd .. && rm -rf target-repo
             echo "success=ok" >> $GITHUB_OUTPUT
             break
