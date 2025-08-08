@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up GitHub CLI
-        uses: cli/gh-action@v2
+        uses: actions/setup-gh@v4
 
       - name: Set up Python for scripting
         uses: actions/setup-python@v5
