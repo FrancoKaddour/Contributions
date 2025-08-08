@@ -35,7 +35,6 @@ jobs:
           python-version: '3.x'
 
       - name: Prepare list of frontend popular repos
-        id: prepare_repos
         run: |
           cat >repos.txt <<EOF
           vercel/next.js
@@ -64,14 +63,16 @@ jobs:
           tanstack/table
           pmndrs/zustand
           pmndrs/jotai
-          react-select/react-select
+          JedWatson/react-select
           react-datepicker/react-datepicker
           react-toastify/react-toastify
           cookpete/react-player
           EOF
 
       - name: Try repos until success
-        id: try_repos
+        id: contribute_any
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
         run: |
           set -e
           success=""
@@ -83,6 +84,7 @@ jobs:
               echo "Could not get default branch for $repo. Skipping."
               continue
             fi
+
             git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" target-repo 2>/dev/null || { echo "Clone failed for $repo. Skipping."; continue; }
             cd target-repo
 
@@ -147,8 +149,6 @@ jobs:
             echo "No successful contribution could be made."
             exit 78
           fi
-        env:
-          GH_TOKEN: ${{ env.GH_TOKEN }}
 
   update-profile:
     needs: contribute
