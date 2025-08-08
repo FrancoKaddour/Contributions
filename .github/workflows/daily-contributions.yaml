@@ -100,6 +100,10 @@ jobs:
             echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
             git add -- "$file"
             git commit -m "Small improvement: docs/example/test (learning and OSS 🤗)"
+
+            # Reconfiguramos origin para usar el token y poder hacer push
+            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${repo}.git
+
             git push --set-upstream origin "$branch_name"
 
             pr_url=$(gh pr create \
