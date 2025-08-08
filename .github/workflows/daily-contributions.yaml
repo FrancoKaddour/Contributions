@@ -20,8 +20,6 @@ jobs:
       GIT_COMMITTER_EMAIL: Francokaddour@gmail.com
       GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
     steps:
-      
-
       - name: Checkout your own repo
         uses: actions/checkout@v4
 
@@ -35,38 +33,38 @@ jobs:
 
       - name: Prepare list of frontend popular repos
         run: |
-          cat >repos.txt <<EOF
-          vercel/next.js
-          vitejs/vite
-          facebook/react
-          vuejs/core
-          angular/angular
-          sveltejs/svelte
-          solidjs/solid
-          withastro/astro
-          reduxjs/redux
-          mui/material-ui
-          ant-design/ant-design
-          tailwindlabs/tailwindcss
-          react-hook-form/react-hook-form
-          remix-run/remix
-          chakra-ui/chakra-ui
-          nuxt/nuxt
-          storybookjs/storybook
-          react-dnd/react-dnd
-          testing-library/react-testing-library
-          emotion-js/emotion
-          styled-components/styled-components
-          react-icons/react-icons
-          react-router/react-router
-          tanstack/table
-          pmndrs/zustand
-          pmndrs/jotai
-          JedWatson/react-select
-          react-datepicker/react-datepicker
-          react-toastify/react-toastify
-          cookpete/react-player
-          EOF
+          cat <<EOF > repos.txt
+vercel/next.js
+vitejs/vite
+facebook/react
+vuejs/core
+angular/angular
+sveltejs/svelte
+solidjs/solid
+withastro/astro
+reduxjs/redux
+mui/material-ui
+ant-design/ant-design
+tailwindlabs/tailwindcss
+react-hook-form/react-hook-form
+remix-run/remix
+chakra-ui/chakra-ui
+nuxt/nuxt
+storybookjs/storybook
+react-dnd/react-dnd
+testing-library/react-testing-library
+emotion-js/emotion
+styled-components/styled-components
+react-icons/react-icons
+react-router/react-router
+tanstack/table
+pmndrs/zustand
+pmndrs/jotai
+JedWatson/react-select
+react-datepicker/react-datepicker
+react-toastify/react-toastify
+cookpete/react-player
+EOF
 
       - name: Try repos until success
         id: contribute_any
@@ -75,72 +73,57 @@ jobs:
         run: |
           set -e
           success=""
-          while read repo; do
+          while read -r repo; do
             echo "Trying $repo"
-            # Detect default branch
-            branch=$(gh repo view "$repo" --json defaultBranchRef -q ".defaultBranchRef.name" 2>/dev/null || echo "")
+
+            # Obtener branch por defecto
+            branch=$(gh repo view "$repo" --json defaultBranchRef -q ".defaultBranchRef.name" 2>/dev/null)
             if [ -z "$branch" ]; then
-              echo "Could not get default branch for $repo. Skipping."
+              echo "No default branch for $repo. Skipping."
               continue
             fi
 
-            git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" target-repo 2>/dev/null || { echo "Clone failed for $repo. Skipping."; continue; }
+            git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" target-repo
             cd target-repo
 
-            # Find a file to edit
-            file=""
-            for f in README.md readme.md docs/*.md docs/**/*.md examples/*.js examples/**/*.js test/*.js test/**/*.js tests/*.js tests/**/*.js .github/*.md .github/**/*.md; do
-              if [ -f "$f" ]; then
-                file="$f"
-                break
-              fi
-            done
+            # Elegir primer archivo .md o .js
+            file=$(find . -type f \( -iname "readme.md" -o -iname "*.md" -o -name "*.js" \) | head -n1)
             if [ -z "$file" ]; then
-              file=$(find . -type f \( -name "*.md" -o -name "*.js" \) | head -1)
-            fi
-            if [ -z "$file" ]; then
-              cd ..
-              rm -rf target-repo
-              echo "No eligible file found in $repo. Skipping."
+              echo "No eligible file in $repo. Skipping."
+              cd .. && rm -rf target-repo
               continue
             fi
 
-            # Make a small contribution
-            echo "" >> "$file"
-            echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
-            echo "Done minor edit in $file"
-
-            # Create branch, commit and push
+            # Crear rama antes de editar
             branch_name="franco/contrib-$(date +%s)"
             git checkout -b "$branch_name"
-            git config user.name "${GIT_AUTHOR_NAME}"
-            git config user.email "${GIT_AUTHOR_EMAIL}"
-            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/$repo.git
-            git add "$file"
-            git commit -m "Small improvement: docs/example/test (learning and OSS ❤️)"
-            git push --set-upstream origin "$branch_name" || { echo "Push failed for $repo. Skipping."; cd ..; rm -rf target-repo; continue; }
-            echo "branch=$branch_name" >> $GITHUB_OUTPUT
 
-            # Try to create PR
-            pr_url=$(gh pr create --title "Small docs/example/test improvement (learning and OSS ❤️)" \
-              --body "Hi! I made a small contribution to your project—just a tiny improvement to the docs/examples/tests. I love learning from open source and wanted to give back, even in a small way. Thanks for maintaining such a great frontend resource!\n—Franco" \
+            # Aplicar el pequeño aporte
+            echo "" >> "$file"
+            echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
+            echo "Edited $file"
+
+            # Hacer commit correctamente
+            git add -- "$file"
+            git commit -m "Small improvement: docs/example/test (learning and OSS ❤️)"
+
+            # Push y PR
+            git push --set-upstream origin "$branch_name"
+            pr_url=$(gh pr create \
+              --title "Small docs/example/test improvement (learning and OSS ❤️)" \
+              --body "Hi! I made a small contribution to your project—just a tiny improvement to the docs/examples/tests. I love learning from open source and wanted to give back, even in a small way.\n—Franco" \
               --head "$branch_name" --base "$branch" 2>/dev/null || echo "")
-            if [ -z "$pr_url" ]; then
-              echo "PR creation failed for $repo. Skipping."
-              cd ..
-              rm -rf target-repo
-              continue
-            fi
             echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
 
-            # Try to create Issue
-            gh issue create --title "Friendly contribution: small docs/example/test improvement" \
-              --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nI really appreciate the effort you put into this project and wanted to participate, even if it’s just a little.\nThank you for your awesome work!\n—Franco\n\nPR: $pr_url" || true
+            # Crear issue friendly (opcional)
+            gh issue create \
+              --title "Friendly contribution: small docs/example/test improvement" \
+              --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nI really appreciate the effort you put into this project and wanted to participate, even if it’s just a little.\nThank you for your awesome work!\n—Franco\n\nPR: $pr_url" \
+              || true
 
-            # Cleanup
-            cd ..
-            rm -rf target-repo
-            success="ok"
+            # Limpieza y salida del loop
+            cd .. && rm -rf target-repo
+            echo "success=ok" >> $GITHUB_OUTPUT
             break
           done < repos.txt
 
@@ -169,7 +152,8 @@ jobs:
       - name: Fetch recent PRs opened by you
         run: |
           gh search prs --author FrancoKaddour --sort created --order desc --limit 5 --json title,url,repository \
-          | jq -r '.[] | "* [\(.title)](\(.url)) in [\(.repository.nameWithOwner)](https://github.com/\(.repository.nameWithOwner))"' > profile/RECENT_PRS.md
+          | jq -r '.[] | "* [\(.title)](\(.url)) in [\(.repository.nameWithOwner)](https://github.com/\(.repository.nameWithOwner))"' \
+          > profile/RECENT_PRS.md
         env:
           GH_TOKEN: ${{ env.GH_TOKEN }}
 
@@ -183,7 +167,7 @@ jobs:
         run: |
           cd profile
           git config user.name "Franco Kaddour"
-          git config user.email "your@email.com"
+          git config user.email "Francokaddour@gmail.com"
           git add README.md
           git commit -m "Update recent contributions [bot]" || true
           git push
