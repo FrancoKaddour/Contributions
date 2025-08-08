@@ -1,143 +1,220 @@
-name: Daily Frontend Contributions
+name: Daily Natural Frontend Contributions
 
 on:
   schedule:
-    - cron: '0 6,10,14,18,22 * * *'
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+    # Distinto horario cada día, de lunes a sábado
+    - cron: '23 8 * * 1'   # Monday 08:23 UTC
+    - cron: '17 11 * * 2'  # Tuesday 11:17 UTC
+    - cron: '42 15 * * 3'  # Wednesday 15:42 UTC
+    - cron: '59 17 * * 4'  # Thursday 17:59 UTC
+    - cron: '25 21 * * 5'  # Friday 21:25 UTC
+    - cron: '08 13 * * 6'  # Saturday 13:08 UTC
 
 jobs:
   contribute:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
+      GIT_AUTHOR_NAME: Franco Kaddour
+      GIT_COMMITTER_NAME: Franco Kaddour
+      GIT_AUTHOR_EMAIL: Francokaddour@gmail.com
+      GIT_COMMITTER_EMAIL: Francokaddour@gmail.com
+      GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
     steps:
-      - name: Setup GitHub CLI
-        uses: cli/cli-action@v2
+      - name: Wait a random extra 0-30 minutes to simulate human behavior
+        run: sleep $(( RANDOM % 1800 ))
 
-      - name: Select random repo
-        id: pick
-        run: |
-          REPOS=(
-            "facebook/react"
-            "tailwindlabs/tailwindcss"
-            "vercel/next.js"
-            "vuejs/core"
-            "sveltejs/svelte"
-            "chakra-ui/chakra-ui"
-            "storybookjs/storybook"
-            "axios/axios"
-            "lodash/lodash"
-            "chartjs/Chart.js"
-            "adobe/react-spectrum"
-            "mui/material-ui"
-            "reduxjs/redux-toolkit"
-            "react-hook-form/react-hook-form"
-            "framer/motion"
-            "threejs/three.js"
-          )
-          SELECTED_REPO=${REPOS[$RANDOM % ${#REPOS[@]}]}
-          echo "selected_repo=$SELECTED_REPO" >> $GITHUB_OUTPUT
-
-      - name: Checkout random repo
+      - name: Checkout your own repo
         uses: actions/checkout@v4
-        with:
-          repository: ${{ steps.pick.outputs.selected_repo }}
-          token: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-          path: target-repo
-          ref: main
-          fetch-depth: 0
-          sparse-checkout: |
-            README.md
-            examples/
 
-      - name: Make human-like contribution
-        run: |
-          cd target-repo
-          sleep $((60 + RANDOM % 240))
-          # Corrección ortográfica en README
-          if [ -f README.md ]; then
-            sed -i 's/hte/the/g' README.md
-            sed -i 's/Javscript/JavaScript/g' README.md
-          fi
-          # Añadir ejemplo si no existe
-          mkdir -p examples
-          if [ ! -f examples/franco-usage.js ]; then
-            echo "// Ejemplo por @FrancoKaddour" > examples/franco-usage.js
-            echo "export default () => console.log('Hello from Franco!');" >> examples/franco-usage.js
-          fi
-
-      - name: Create PR
-        run: |
-          cd target-repo
-          git config user.name "Franco Kaddour"
-          git config user.email "francokaddour@gmail.com"
-          BRANCH_NAME="franco-improvements-$(date +'%m%d')"
-          git checkout -b $BRANCH_NAME
-          git add .
-          git commit -m "📚 Mejoras de documentación y ejemplos"
-          git push origin $BRANCH_NAME
-          sleep $((120 + RANDOM % 360))
-          gh pr create \
-            --title "Mejoras de documentación (por @FrancoKaddour)" \
-            --body "Hola equipo! He mejorado la documentación y añadí un ejemplo práctico basado en mi experiencia" \
-            --base main \
-            --head $BRANCH_NAME \
-            --repo ${{ steps.pick.outputs.selected_repo }}
-
-      - name: Engage with community
-        run: |
-          sleep $((300 + RANDOM % 600))
-          ISSUE_NUMBER=$(gh issue list --repo ${{ steps.pick.outputs.selected_repo }} --limit 1 --json number -q '.[0].number')
-          if [ -n "$ISSUE_NUMBER" ]; then
-            gh issue comment $ISSUE_NUMBER --repo ${{ steps.pick.outputs.selected_repo }} \
-              --body "Interesante problema! Desde mi experiencia con frontend, sugeriría probar este enfoque..."
-          else
-            echo "No hay issues para comentar"
-          fi
-
-      - name: Verify access
-        run: |
-          gh auth status
-          gh api /repos/${{ steps.pick.outputs.selected_repo }} --jq .permissions
-
-  update-profile:
-    runs-on: ubuntu-latest
-    needs: contribute
-    env:
-      GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-    steps:
-      - name: Setup GitHub CLI
+      - name: Set up GitHub CLI
         uses: cli/gh-action@v2
 
-      - name: Checkout profile repo
+      - name: Set up Python for scripting
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare list of frontend popular repos
+        id: prepare_repos
+        run: |
+          cat >repos.txt <<EOF
+          vercel/next.js
+          vitejs/vite
+          facebook/react
+          vuejs/core
+          angular/angular
+          sveltejs/svelte
+          solidjs/solid
+          withastro/astro
+          builderio/qwik
+          reduxjs/redux
+          testing-library/react-testing-library
+          mui/material-ui
+          ant-design/ant-design
+          tailwindlabs/tailwindcss
+          react-hook-form/react-hook-form
+          remix-run/remix
+          preactjs/preact
+          chakra-ui/chakra-ui
+          vuejs/pinia
+          nuxt/nuxt
+          storybookjs/storybook
+          graphql/graphql-js
+          react-dnd/react-dnd
+          react-navigation/react-navigation
+          react-spring/react-spring
+          react-three-fiber/react-three-fiber
+          react-dropzone/react-dropzone
+          react-query/react-query
+          tanstack/table
+          pmndrs/zustand
+          pmndrs/jotai
+          react-icons/react-icons
+          react-router/react-router
+          emotion-js/emotion
+          styled-components/styled-components
+          react-grid-layout/react-grid-layout
+          react-bootstrap/react-bootstrap
+          recharts/recharts
+          visgl/react-map-gl
+          react-virtualized/react-virtualized
+          react-pdf-viewer/react-pdf-viewer
+          react-beautiful-dnd/react-beautiful-dnd
+          react-select/react-select
+          react-datepicker/react-datepicker
+          react-toastify/react-toastify
+          react-table/react-table
+          react-player/react-player
+          react-awesome-query-builder/awesome-query-builder
+          EOF
+
+      - name: Pick a random repo
+        id: pick_repo
+        run: |
+          repos=($(shuf repos.txt))
+          for repo in "${repos[@]}"; do
+            echo "candidate=$repo" >> $GITHUB_OUTPUT
+            break
+          done
+
+      - name: Detect default branch
+        id: branch
+        run: |
+          candidate=${{ steps.pick_repo.outputs.candidate }}
+          branch=$(gh repo view "$candidate" --json defaultBranchRef -q ".defaultBranchRef.name")
+          echo "branch=${branch}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+
+      - name: Clone the repo
+        run: |
+          git clone --depth 1 --branch ${{ steps.branch.outputs.branch }} https://github.com/${{ steps.pick_repo.outputs.candidate }}.git target-repo
+          cd target-repo
+          echo "Cloned ${{ steps.pick_repo.outputs.candidate }} on branch ${{ steps.branch.outputs.branch }}"
+
+      - name: Find a file to edit
+        id: file
+        run: |
+          cd target-repo
+          # Prioritize README, docs, examples, tests
+          file=""
+          for f in README.md readme.md docs/*.md docs/**/*.md examples/*.js examples/**/*.js test/*.js test/**/*.js tests/*.js tests/**/*.js .github/*.md .github/**/*.md; do
+            if [ -f "$f" ]; then
+              file="$f"
+              break
+            fi
+          done
+          if [ -z "$file" ]; then
+            # fallback to any .md or .js
+            file=$(find . -type f \( -name "*.md" -o -name "*.js" \) | head -1)
+          fi
+          if [ -z "$file" ]; then
+            echo "No eligible file found, exit 78"
+            exit 78
+          fi
+          echo "file=${file}" >> $GITHUB_OUTPUT
+
+      - name: Make a small contribution
+        id: edit
+        run: |
+          cd target-repo
+          file="${{ steps.file.outputs.file }}"
+          # Add a trailing blank line or personal note at the very end
+          echo "" >> "$file"
+          echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
+          echo "Done minor edit in $file"
+
+      - name: Create branch, commit and push
+        run: |
+          cd target-repo
+          branch_name="franco/contrib-$(date +%s)"
+          git checkout -b "$branch_name"
+          git config user.name "${GIT_AUTHOR_NAME}"
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git add "${{ steps.file.outputs.file }}"
+          git commit -m "Small improvement: docs/example/test (learning and OSS ❤️)"
+          git push --set-upstream origin "$branch_name"
+          echo "branch=$branch_name" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request (personal, educado, en inglés)
+        id: create_pr
+        run: |
+          cd target-repo
+          pr_url=$(gh pr create --title "Small docs/example/test improvement (learning and OSS ❤️)" \
+            --body "Hi! I made a small contribution to your project—just a tiny improvement to the docs/examples/tests. I love learning from open source and wanted to give back, even in a small way. Thanks for maintaining such a great frontend resource!\n—Franco" \
+            --head "$branch_name" --base "${{ steps.branch.outputs.branch }}" || true)
+          echo "pr_url=${pr_url}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+
+      - name: Create Issue (personal, educado, en inglés)
+        if: steps.create_pr.outputs.pr_url != ''
+        run: |
+          cd target-repo
+          gh issue create --title "Friendly contribution: small docs/example/test improvement" \
+            --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nI really appreciate the effort you put into this project and wanted to participate, even if it’s just a little.\nThank you for your awesome work!\n—Franco\n\nPR: ${{ steps.create_pr.outputs.pr_url }}"
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+
+      - name: Log if no PR was created
+        if: steps.create_pr.outputs.pr_url == ''
+        run: echo "No PR was created (maybe push failed or repo protected)."
+
+      - name: Cleanup
+        run: rm -rf target-repo
+
+  update-profile:
+    needs: contribute
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+    steps:
+      - name: Checkout your profile repo
         uses: actions/checkout@v4
         with:
           repository: FrancoKaddour/FrancoKaddour
-          token: ${{ secrets.AUTO_CONTRIB_TOKEN }}
+          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           path: profile
 
-      - name: Add contributions section
+      - name: Fetch recent PRs opened by you
+        run: |
+          gh search prs --author FrancoKaddour --sort created --order desc --limit 5 --json title,url,repository \
+          | jq -r '.[] | "* [\(.title)](\(.url)) in [\(.repository.nameWithOwner)](https://github.com/\(.repository.nameWithOwner))"' > profile/RECENT_PRS.md
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+
+      - name: Update README with latest PRs
         run: |
           cd profile
-          echo -e "\n## 🚀 Últimas Contribuciones" > new-section.md
-          echo "### $(date '+%d/%m/%Y')" >> new-section.md
-          gh pr list --author FrancoKaddour --limit 5 --json repository,url,title | \
-            jq -r '.[] | "- [\(.repository.name)](\(.url)) - \(.title)"' >> new-section.md
-          awk '/<!-- CONTRIB_START -->/{print; system("cat new-section.md"); f=1} /<!-- CONTRIB_END -->/{f=0} !f' README.md > tmp.md
-          mv tmp.md README.md
-          rm new-section.md
+          awk '/<!-- recent_prs_start -->/{print; system("cat RECENT_PRS.md"); f=1} /<!-- recent_prs_end -->/{f=0} !f' README.md > README.new
+          mv README.new README.md
 
-      - name: Commit & Push changes
+      - name: Commit and push profile update
         run: |
           cd profile
           git config user.name "Franco Kaddour"
-          git config user.email "francokaddour@gmail.com"
-          git pull --rebase || true
+          git config user.email "your@email.com"
           git add README.md
-          git commit -m "✨ Actualizar contribuciones" || echo "Sin cambios"
+          git commit -m "Update recent contributions [bot]" || true
           git push
