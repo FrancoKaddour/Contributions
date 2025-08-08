@@ -85,7 +85,7 @@ jobs:
           react-datepicker/react-datepicker
           react-toastify/react-toastify
           react-table/react-table
-          react-player/react-player
+          cookpete/react-player
           react-awesome-query-builder/awesome-query-builder
           EOF
 
@@ -145,14 +145,14 @@ jobs:
           echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
           echo "Done minor edit in $file"
 
-          - name: Create branch, commit and push
-          run: |
+      - name: Create branch, commit and push
+        run: |
           cd target-repo
           branch_name="franco/contrib-$(date +%s)"
           git checkout -b "$branch_name"
           git config user.name "${GIT_AUTHOR_NAME}"
           git config user.email "${GIT_AUTHOR_EMAIL}"
-          # Este es el fix clave:
+          # Fix para autenticación con token
           git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ steps.pick_repo.outputs.candidate }}.git
           git add "${{ steps.file.outputs.file }}"
           git commit -m "Small improvement: docs/example/test (learning and OSS ❤️)"
