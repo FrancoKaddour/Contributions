@@ -35,37 +35,37 @@ jobs:
       - name: Prepare list of frontend popular repos
         run: |
           cat <<EOF > repos.txt
-          vercel/next.js
-          vitejs/vite
-          facebook/react
-          vuejs/core
-          angular/angular
-          sveltejs/svelte
-          solidjs/solid
-          withastro/astro
-          reduxjs/redux
-          mui/material-ui
-          ant-design/ant-design
-          tailwindlabs/tailwindcss
-          react-hook-form/react-hook-form
-          remix-run/remix
-          chakra-ui/chakra-ui
-          nuxt/nuxt
-          storybookjs/storybook
-          react-dnd/react-dnd
-          testing-library/react-testing-library
-          emotion-js/emotion
-          styled-components/styled-components
-          react-icons/react-icons
-          react-router/react-router
-          tanstack/table
-          pmndrs/zustand
-          pmndrs/jotai
-          JedWatson/react-select
-          react-datepicker/react-datepicker
-          react-toastify/react-toastify
-          cookpete/react-player
-          EOF
+vercel/next.js
+vitejs/vite
+facebook/react
+vuejs/core
+angular/angular
+sveltejs/svelte
+solidjs/solid
+withastro/astro
+reduxjs/redux
+mui/material-ui
+ant-design/ant-design
+tailwindlabs/tailwindcss
+react-hook-form/react-hook-form
+remix-run/remix
+chakra-ui/chakra-ui
+nuxt/nuxt
+storybookjs/storybook
+react-dnd/react-dnd
+testing-library/react-testing-library
+emotion-js/emotion
+styled-components/styled-components
+react-icons/react-icons
+react-router/react-router
+tanstack/table
+pmndrs/zustand
+pmndrs/jotai
+JedWatson/react-select
+react-datepicker/react-datepicker
+react-toastify/react-toastify
+cookpete/react-player
+EOF
 
       - name: Try repos until success
         id: contribute_any
@@ -77,46 +77,56 @@ jobs:
           while read -r repo; do
             echo "Trying $repo"
 
+            # Detect default branch of upstream
             branch=$(gh repo view "$repo" --json defaultBranchRef -q ".defaultBranchRef.name" 2>/dev/null)
             if [ -z "$branch" ]; then
               echo "No default branch for $repo. Skipping."
               continue
             fi
 
+            # Clone upstream
             git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" target-repo
             cd target-repo
 
-            file=$(find . -type f \( -iname "readme.md" -o -iname "*.md" -o -name "*.js" \) | head -n1)
+            # Fork upstream into your account and add remote 'fork'
+            gh repo fork "$repo" --remote=true --remote-name fork --clone=false || true
+
+            # Find a README/MD/JS file to touch
+            file=$(find . -type f \( -iname "readme.md" -o -iname "*.md" -o -iname "*.js" \) | head -n1)
             if [ -z "$file" ]; then
               echo "No eligible file in $repo. Skipping."
               cd .. && rm -rf target-repo
               continue
             fi
 
+            # Create a new branch
             branch_name="franco/contrib-$(date +%s)"
             git checkout -b "$branch_name"
 
+            # Make a tiny edit
             echo "" >> "$file"
             echo "<!-- Contributed by Franco Kaddour via a small improvement for learning and OSS love. -->" >> "$file"
             git add -- "$file"
             git commit -m "Small improvement: docs/example/test (learning and OSS 🤗)"
 
-            # Reconfiguramos origin para usar el token y poder hacer push
-            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${repo}.git
+            # Push to your fork
+            git push --set-upstream fork "$branch_name"
 
-            git push --set-upstream origin "$branch_name"
-
+            # Create PR from your fork into upstream
             pr_url=$(gh pr create \
               --title "Small docs/example/test improvement (learning and OSS 🤗)" \
               --body "Hi! I made a small contribution to your project—just a tiny improvement to the docs/examples/tests. I love learning from open source and wanted to give back, even in a small way.\n—Franco" \
-              --head "$branch_name" --base "$branch" 2>/dev/null || echo "")
+              --head "FrancoKaddour:$branch_name" \
+              --base "$branch" 2>/dev/null || echo "")
             echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
 
+            # Optional: create a friendly issue linking the PR
             gh issue create \
               --title "Friendly contribution: small docs/example/test improvement 🤗" \
-              --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nI really appreciate the effort you put into este proyecto y quiero participar aunque sea con algo chico.\n¡Gracias por tu gran trabajo! 🤗\n—Franco\n\nPR: $pr_url" \
+              --body "Hello!\nI just opened a pull request with a small contribution (mostly docs/examples/tests).\nThank you for maintaining this project! 🤗\nPR: $pr_url" \
               || true
 
+            # Cleanup and exit loop
             cd .. && rm -rf target-repo
             echo "success=ok" >> $GITHUB_OUTPUT
             break
@@ -147,17 +157,18 @@ jobs:
 
       - name: Fetch recent PRs opened by you
         run: |
-          gh search prs --author FrancoKaddour --sort created --order desc --limit 5 --json title,url,repository \
+          gh search prs --author FrancoKaddour --sort created --order desc --limit 5 \
+            --json title,url,repository \
           | jq -r '.[] | "* [\(.title)](\(.url)) in [\(.repository.nameWithOwner)](https://github.com/\(.repository.nameWithOwner))"' \
-          > profile/RECENT_PRS.md
+            > profile/RECENT_PRS.md
         env:
           GH_TOKEN: ${{ env.GH_TOKEN }}
 
       - name: Update README with latest PRs
         run: |
           cd profile
-          awk '/<!-- recent_prs_start -->/{print; system("cat RECENT_PRS.md"); f=1} /<!-- recent_prs_end -->/{f=0} !f' README.md \
-            > README.new
+          awk '/<!-- recent_prs_start -->/{print; system("cat RECENT_PRS.md"); f=1} \
+               /<!-- recent_prs_end -->/{f=0} !f' README.md > README.new
           mv README.new README.md
 
       - name: Commit and push profile update
@@ -168,4 +179,5 @@ jobs:
           git add README.md
           git commit -m "Update recent contributions [bot]" || true
           git push
+
 
