@@ -9,6 +9,7 @@ on:
     - cron: '59 17 * * 4'  # Thursday 17:59 UTC
     - cron: '25 21 * * 5'  # Friday 21:25 UTC
     - cron: '08 13 * * 6'  # Saturday 13:08 UTC
+  workflow_dispatch:
 
 jobs:
   contribute:
