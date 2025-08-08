@@ -17,7 +17,7 @@ jobs:
       GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
     steps:
       - name: Setup GitHub CLI
-        uses: cli/gh-action@v2
+        uses: cli/cli-action@v2
 
       - name: Select random repo
         id: pick
