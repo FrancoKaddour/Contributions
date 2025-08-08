@@ -2,70 +2,53 @@ name: Daily Frontend Contributions
 
 on:
   schedule:
-    - cron: '0 6,10,14,18,22 * * *'  # 5 ejecuciones diarias en diferentes horarios
+    - cron: '0 6,10,14,18,22 * * *'
   workflow_dispatch:
 
-# SOLUCIÓN: Eliminamos el permiso duplicado
 permissions:
-  contents: write   # ¡ESTO INCLUYE READ AUTOMÁTICAMENTE!
+  contents: write
   pull-requests: write
   issues: write
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install GitHub CLI
-        run: |
-          sudo apt update
-          sudo apt install -y curl
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install -y gh
-          gh auth login --with-token <<< "${{ secrets.AUTO_CONTRIB_TOKEN }}"
-        env:
-          GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-
   contribute:
     runs-on: ubuntu-latest
-    needs: setup
     env:
       GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-    strategy:
-      matrix:
-        repo: 
-          - "facebook/react"
-          - "tailwindlabs/tailwindcss"
-          - "vercel/next.js"
-          - "vuejs/core"
-          - "sveltejs/svelte"
-          - "chakra-ui/chakra-ui"
-          - "storybookjs/storybook"
-          - "axios/axios"
-          - "lodash/lodash"
-          - "chartjs/Chart.js"
-          - "adobe/react-spectrum"
-          - "mui/material-ui"
-          - "reduxjs/redux-toolkit"
-          - "react-hook-form/react-hook-form"
-          - "framer/motion"
-          - "threejs/three.js"
     steps:
-      - name: Get random repo
-        id: random-repo
+      - name: Setup GitHub CLI
+        uses: cli/gh-action@v2
+
+      - name: Select random repo
+        id: pick
         run: |
-          REPOS=(${{ join(matrix.repo, ' ') }})
+          REPOS=(
+            "facebook/react"
+            "tailwindlabs/tailwindcss"
+            "vercel/next.js"
+            "vuejs/core"
+            "sveltejs/svelte"
+            "chakra-ui/chakra-ui"
+            "storybookjs/storybook"
+            "axios/axios"
+            "lodash/lodash"
+            "chartjs/Chart.js"
+            "adobe/react-spectrum"
+            "mui/material-ui"
+            "reduxjs/redux-toolkit"
+            "react-hook-form/react-hook-form"
+            "framer/motion"
+            "threejs/three.js"
+          )
           SELECTED_REPO=${REPOS[$RANDOM % ${#REPOS[@]}]}
           echo "selected_repo=$SELECTED_REPO" >> $GITHUB_OUTPUT
 
-      - name: Checkout repo
+      - name: Checkout random repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ steps.random-repo.outputs.selected_repo }}
-          path: target-repo
+          repository: ${{ steps.pick.outputs.selected_repo }}
           token: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-          persist-credentials: true
+          path: target-repo
           ref: main
           fetch-depth: 0
           sparse-checkout: |
@@ -76,14 +59,14 @@ jobs:
         run: |
           cd target-repo
           sleep $((60 + RANDOM % 240))
-          
+          # Corrección ortográfica en README
           if [ -f README.md ]; then
             sed -i 's/hte/the/g' README.md
             sed -i 's/Javscript/JavaScript/g' README.md
           fi
-          
+          # Añadir ejemplo si no existe
+          mkdir -p examples
           if [ ! -f examples/franco-usage.js ]; then
-            mkdir -p examples
             echo "// Ejemplo por @FrancoKaddour" > examples/franco-usage.js
             echo "export default () => console.log('Hello from Franco!');" >> examples/franco-usage.js
           fi
@@ -93,35 +76,34 @@ jobs:
           cd target-repo
           git config user.name "Franco Kaddour"
           git config user.email "francokaddour@gmail.com"
-          
           BRANCH_NAME="franco-improvements-$(date +'%m%d')"
           git checkout -b $BRANCH_NAME
           git add .
           git commit -m "📚 Mejoras de documentación y ejemplos"
           git push origin $BRANCH_NAME
-          
           sleep $((120 + RANDOM % 360))
-          
           gh pr create \
             --title "Mejoras de documentación (por @FrancoKaddour)" \
             --body "Hola equipo! He mejorado la documentación y añadí un ejemplo práctico basado en mi experiencia" \
             --base main \
             --head $BRANCH_NAME \
-            --repo ${{ steps.random-repo.outputs.selected_repo }}
+            --repo ${{ steps.pick.outputs.selected_repo }}
 
       - name: Engage with community
         run: |
           sleep $((300 + RANDOM % 600))
-          ISSUE_NUMBER=$(gh issue list --repo ${{ steps.random-repo.outputs.selected_repo }} --limit 1 --json number -q '.[0].number')
+          ISSUE_NUMBER=$(gh issue list --repo ${{ steps.pick.outputs.selected_repo }} --limit 1 --json number -q '.[0].number')
           if [ -n "$ISSUE_NUMBER" ]; then
-            gh issue comment $ISSUE_NUMBER --repo ${{ steps.random-repo.outputs.selected_repo }} \
+            gh issue comment $ISSUE_NUMBER --repo ${{ steps.pick.outputs.selected_repo }} \
               --body "Interesante problema! Desde mi experiencia con frontend, sugeriría probar este enfoque..."
+          else
+            echo "No hay issues para comentar"
           fi
 
       - name: Verify access
         run: |
           gh auth status
-          gh api /repos/${{ steps.random-repo.outputs.selected_repo }} --jq .permissions
+          gh api /repos/${{ steps.pick.outputs.selected_repo }} --jq .permissions
 
   update-profile:
     runs-on: ubuntu-latest
@@ -129,30 +111,33 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.AUTO_CONTRIB_TOKEN }}
     steps:
-      - name: Update profile README
+      - name: Setup GitHub CLI
+        uses: cli/gh-action@v2
+
+      - name: Checkout profile repo
         uses: actions/checkout@v4
         with:
           repository: FrancoKaddour/FrancoKaddour
-          path: profile
           token: ${{ secrets.AUTO_CONTRIB_TOKEN }}
-          
+          path: profile
+
       - name: Add contributions section
         run: |
           cd profile
-          echo "\n## 🚀 Últimas Contribuciones" > new-section.md
+          echo -e "\n## 🚀 Últimas Contribuciones" > new-section.md
           echo "### $(date '+%d/%m/%Y')" >> new-section.md
           gh pr list --author FrancoKaddour --limit 5 --json repository,url,title | \
-          jq -r '.[] | "- [\(.repository.name)]\(.url) - \(.title)"' >> new-section.md
-          
-          awk '/<!-- CONTRIB_START -->/{print; print ""; while(getline <"new-section.md") print; f=1} /<!-- CONTRIB_END -->/{f=0} !f' README.md > tmp.md
+            jq -r '.[] | "- [\(.repository.name)](\(.url)) - \(.title)"' >> new-section.md
+          awk '/<!-- CONTRIB_START -->/{print; system("cat new-section.md"); f=1} /<!-- CONTRIB_END -->/{f=0} !f' README.md > tmp.md
           mv tmp.md README.md
           rm new-section.md
 
-      - name: Commit changes
+      - name: Commit & Push changes
         run: |
           cd profile
           git config user.name "Franco Kaddour"
           git config user.email "francokaddour@gmail.com"
+          git pull --rebase || true
           git add README.md
-          git commit -m "✨ Actualizar contribuciones"
+          git commit -m "✨ Actualizar contribuciones" || echo "Sin cambios"
           git push
