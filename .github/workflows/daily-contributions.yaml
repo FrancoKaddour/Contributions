@@ -27,8 +27,8 @@ jobs:
       - name: Checkout your own repo
         uses: actions/checkout@v4
 
-      - name: Set up GitHub CLI
-        uses: actions/setup-gh@v3
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
 
       - name: Set up Python for scripting
         uses: actions/setup-python@v5
@@ -197,6 +197,9 @@ jobs:
           repository: FrancoKaddour/FrancoKaddour
           token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           path: profile
+
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
 
       - name: Fetch recent PRs opened by you
         run: |
